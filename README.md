@@ -18,20 +18,18 @@ The kit uses a board-to-board (B2B) connector. Seat the XIAO and Wio-SX1262 toge
 
 ### Software and accounts
 
-- [Visual Studio Code](https://code.visualstudio.com/)
+- [Arduino CLI](https://arduino.github.io/arduino-cli/) (for example `brew install arduino-cli` on macOS)
+- `make` and `python3`
 - A [The Things Network account](https://www.thethingsnetwork.org/)
 
-You do not need to install PlatformIO, the ESP32 toolchain, or RadioLib in advance. The steps below install and configure these project dependencies through PlatformIO.
+You do not need to install the ESP32 toolchain or RadioLib manually; `make setup` installs them.
 
 ## Install and register the device
 
-### 1. Install PlatformIO and the project build dependencies
+### 1. Install the build dependencies
 
-1. Install and launch [Visual Studio Code](https://code.visualstudio.com/).
-2. In VS Code, open **Extensions** (`Ctrl+Shift+X` on Windows/Linux or `Cmd+Shift+X` on macOS), search for **PlatformIO IDE**, and install the extension published by PlatformIO.
-3. Open this project folder in VS Code—the folder containing `platformio.ini`. PlatformIO initializes the project and installs PlatformIO Core if needed.
-
-Do not install a separate ESP32 toolchain or copy RadioLib into the project manually. The board target, framework, and RadioLib version are already specified in `platformio.ini`; PlatformIO downloads them automatically on the first build after you have configured `src/secrets.h` (step 6).
+1. Install [Arduino CLI](https://arduino.github.io/arduino-cli/latest/installation/).
+2. From the project folder, run `make setup`. This installs the ESP32 Arduino core (3.3.8) and RadioLib 6.6.0, pinned in the `Makefile`.
 
 ### 2. Assemble and connect the kit
 
@@ -52,24 +50,24 @@ You need a gateway connected to the same TTN cluster and using the frequency pla
 3. Select the **Europe 863-870 MHz** frequency plan (the TTN option may be labelled “SF9 for RX2 - recommended”).
 4. Set the LoRaWAN MAC version to **1.1.0**. The firmware supplies both an `NwkKey` and an `AppKey` through RadioLib's OTAA interface. Select the matching regional-parameters version offered by TTN (typically **RP001 1.1.0-B**).
 5. Generate a **JoinEUI** and **DevEUI** in TTN (or enter identifiers allocated to your device). They must match the values you later configure in the firmware.
-6. In TTN, generate an **AppKey** and **NwkKey** for the device. Copy each key exactly as shown into the quoted `appKeyHex` and `nwkKeyHex` strings in `src/secrets.h`. Do not add spaces, commas, or `0x` prefixes; each value must be 32 hexadecimal characters. The firmware converts each pair of hex digits into the 16 key bytes RadioLib expects.
+6. In TTN, generate an **AppKey** and **NwkKey** for the device. Copy each key exactly as shown into the quoted `appKeyHex` and `nwkKeyHex` strings in `firmware/secrets.h`. Do not add spaces, commas, or `0x` prefixes; each value must be 32 hexadecimal characters. The firmware converts each pair of hex digits into the 16 key bytes RadioLib expects.
 7. Give the end device a unique lowercase **End device ID** (for example, `xiao-temperature-01`) and register it.
 
-**Protect the keys.** Do not commit `src/secrets.h` or share a firmware image built with your device's credentials. This repository ignores that local file. If credentials from an earlier version of this project have already been committed or shared, revoke/replace them in TTN before deploying. If this firmware has already attempted to join with a previous identity, do not erase its saved LoRaWAN nonce state or reuse that identity with new keys; nonce persistence is required for safe OTAA operation.
+**Protect the keys.** Do not commit `firmware/secrets.h` or share a firmware image built with your device's credentials. This repository ignores that local file. If credentials from an earlier version of this project have already been committed or shared, revoke/replace them in TTN before deploying. If this firmware has already attempted to join with a previous identity, do not erase its saved LoRaWAN nonce state or reuse that identity with new keys; nonce persistence is required for safe OTAA operation.
 
 ### 5. Configure credentials
 
-1. Copy `src/secrets.example.h` to `src/secrets.h`.
-2. Edit `src/secrets.h`: enter the same JoinEUI and DevEUI registered in TTN, and replace the example values in `appKeyHex` and `nwkKeyHex` with the corresponding TTN keys.
-3. Keep the EU868 region and radio pin definitions in `src/config.h` unchanged for this exact kit and EU868 deployment.
+1. Copy `firmware/secrets.example.h` to `firmware/secrets.h`.
+2. Edit `firmware/secrets.h`: enter the same JoinEUI and DevEUI registered in TTN, and replace the example values in `appKeyHex` and `nwkKeyHex` with the corresponding TTN keys.
+3. Keep the EU868 region and radio pin definitions in `firmware/config.h` unchanged for this exact kit and EU868 deployment.
 
-The keys can be pasted directly in their TTN hexadecimal format, with no manual byte conversion. The EUI values are 64-bit hexadecimal numbers; retain all 16 digits, including any leading zeroes. `src/secrets.h` is excluded by `.gitignore`; keep the template `src/secrets.example.h` free of real credentials.
+The keys can be pasted directly in their TTN hexadecimal format, with no manual byte conversion. The EUI values are 64-bit hexadecimal numbers; retain all 16 digits, including any leading zeroes. `firmware/secrets.h` is excluded by `.gitignore`; keep the template `firmware/secrets.example.h` free of real credentials.
 
 ### 6. Build and flash the firmware
 
-1. In VS Code, open the PlatformIO **Project Tasks** panel and run **seeed_xiao_esp32s3 > General > Build**. On the first build, PlatformIO reads `platformio.ini` and automatically downloads the Espressif 32 platform, the XIAO ESP32S3 Arduino framework and required ESP32 compiler/build tools, and RadioLib 6.6.0. Wait for the build to finish. You can also run `pio run` from the project directory.
-2. Connect the XIAO by USB-C and choose **Project Tasks > seeed_xiao_esp32s3 > General > Upload**. If PlatformIO asks, select the serial port for the board. From a terminal, run `pio run --target upload`.
-3. Open **Project Tasks > seeed_xiao_esp32s3 > Monitor** or run `pio device monitor --baud 115200` to view startup and join messages.
+1. Run `make build` to compile the firmware.
+2. Connect the XIAO by USB-C and run `make upload`. The serial port is detected automatically; if not, pass it explicitly, for example `make upload PORT=/dev/cu.usbmodem1101`.
+3. Run `make monitor` to view startup and join messages (115200 baud).
 
 If the board does not appear as a serial port or upload does not start, try another USB data cable and port. Put the XIAO into its USB bootloader mode using its BOOT/RESET controls, then retry the upload.
 
@@ -85,7 +83,7 @@ To see the reading as a number instead of raw bytes:
 
 1. Open the application's **Payload formatters** and select the **Uplink** formatter.
 2. Choose **Custom Javascript**.
-3. Paste the contents of [`src/ttn_payload_formatter.js`](src/ttn_payload_formatter.js) and save.
+3. Paste the contents of [`firmware/ttn_payload_formatter.js`](firmware/ttn_payload_formatter.js) and save.
 4. Reopen the end device's Live data. Decoded uplinks contain `temperature_c`.
 
 The payload is a signed 16-bit integer in big-endian order, representing hundredths of a degree Celsius. For example, a payload of `09 C4` decodes to `25.00 °C`.
@@ -99,8 +97,8 @@ The payload is a signed 16-bit integer in big-endian order, representing hundred
 
 ## Project files
 
-- `platformio.ini` — board, framework, and library dependency
-- `src/main.cpp` — LoRaWAN OTAA, persistent join nonces, sleep, and temperature uplinks
-- `src/config.h` — radio pin map, region, timing, and credentials include
-- `src/secrets.example.h` — template for the ignored local `src/secrets.h` credentials file
-- `src/ttn_payload_formatter.js` — TTN uplink decoder
+- `Makefile` — setup, build, upload, and monitor commands using Arduino CLI
+- `firmware/firmware.ino` — LoRaWAN OTAA, persistent join nonces, sleep, and temperature uplinks
+- `firmware/config.h` — radio pin map, region, timing, and credentials include
+- `firmware/secrets.example.h` — template for the ignored local `firmware/secrets.h` credentials file
+- `firmware/ttn_payload_formatter.js` — TTN uplink decoder
