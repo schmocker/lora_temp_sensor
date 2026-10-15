@@ -70,12 +70,22 @@ void saveNonces() {
     haltDevice("ERROR: Could not save LoRaWAN nonces to flash.");
   }
 
+  store.putULong64("deveui", devEUI);
+
   Serial.println("Join nonces saved to flash.");
 }
 
 void restoreNonces() {
   if (!store.isKey("nonces")) {
     Serial.println("No saved nonces: first run of this firmware.");
+    return;
+  }
+
+  // Nonce counters belong to one device identity. After registering a new
+  // device in TTN, start from a clean state instead of reusing the old counters.
+  if (store.getULong64("deveui", 0) != devEUI) {
+    Serial.println("Saved nonces belong to another device identity: discarding.");
+    store.remove("nonces");
     return;
   }
 

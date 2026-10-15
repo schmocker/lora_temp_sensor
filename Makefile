@@ -11,9 +11,14 @@ PORT ?= $(shell arduino-cli board list --format json 2>/dev/null | \
 	p=[x['port']['address'] for x in (d.get('detected_ports') or []) if 'esp32' in str(x).lower()]; \
 	print(p[0] if p else '')")
 
-.PHONY: help setup build upload monitor clean
+TTN_HOST ?= eu1.cloud.thethings.network
+export TTN_HOST
+
+.PHONY: help setup build upload monitor clean ttn-login ttn-provision
 
 help:
+	@echo "make ttn-login      log in to TTN with ttn-lw-cli (opens a browser)"
+	@echo "make ttn-provision  create TTN app + device, write $(SKETCH)/secrets.h"
 	@echo "make setup    install ESP32 core and RadioLib"
 	@echo "make build    compile the firmware"
 	@echo "make upload   build and flash (PORT=... to override)"
@@ -27,8 +32,16 @@ setup:
 		--additional-urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
 	arduino-cli lib install $(RADIOLIB)
 
+ttn-login:
+	ttn-lw-cli use $(TTN_HOST) --user --overwrite
+	ttn-lw-cli login
+
+# Override with APP_ID=..., DEVICE_ID=..., FORCE=1 (replace existing secrets.h)
+ttn-provision:
+	./scripts/ttn-provision.sh
+
 $(SKETCH)/secrets.h:
-	@echo "Missing $(SKETCH)/secrets.h: copy $(SKETCH)/secrets.example.h and enter your TTN credentials." >&2
+	@echo "Missing $(SKETCH)/secrets.h: run 'make ttn-provision' (or copy $(SKETCH)/secrets.example.h and enter your credentials)." >&2
 	@exit 1
 
 build: $(SKETCH)/secrets.h
