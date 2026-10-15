@@ -43,7 +43,7 @@ The script stops if `firmware/secrets.h` already exists, because that file belon
 
 You need a gateway connected to the same TTN cluster and using the frequency plan for your region. The firmware as provided is configured for **EU868**: it starts the radio at 868.1 MHz and uses the EU868 LoRaWAN region. Do not use these settings in another region without changing the firmware and matching its TTN frequency plan to local regulations.
 
-**Protect the keys.** Do not commit `firmware/secrets.h` or share a firmware image built with your device's credentials. This repository ignores that local file. If this firmware has already attempted to join with a previous identity, do not erase its saved LoRaWAN nonce state; nonce persistence is required for safe OTAA operation.
+**Protect the keys.** Do not commit `firmware/secrets.h` or share a firmware image built with your device's credentials. This repository ignores that local file. Do not erase the board's saved LoRaWAN nonce state while it keeps using the same device; nonce persistence is required for safe OTAA operation.
 
 <details>
 <summary>Manual setup in the TTN Console instead</summary>
@@ -75,7 +75,9 @@ The payload is a signed 16-bit integer in big-endian order, representing hundred
 
 - **Radio initialization fails:** Check that the Wio-SX1262 B2B connector is fully seated, the kit's radio antenna is attached, and the configured board is the XIAO ESP32S3/Wio-SX1262 combination.
 - **OTAA join does not succeed:** Verify TTN gateway coverage and matching frequency plans, JoinEUI, DevEUI, AppKey, NwkKey, LoRaWAN version, and region. Use TTN Live data to inspect join-request and join-accept events. Avoid rapid repeated restarts; the firmware bounds retries and backs off between attempts.
-- **The monitor shows nonce or stored-state errors:** Do not erase flash or disable TTN nonce checks. The firmware stores join nonce history in ESP32 nonvolatile storage and relies on it to avoid invalid OTAA joins.
+- **The monitor shows nonce or stored-state errors:** Do not erase flash or disable TTN nonce checks. The firmware stores join nonce history in ESP32 nonvolatile storage, together with the DevEUI it belongs to, and relies on it to avoid invalid OTAA joins.
+- **`ERR_JOIN_NONCE_INVALID` or TTN `dev_nonce_too_small` after re-registering a device:** TTN rejects join requests whose nonce is not higher than the last one it saw, so a device that was deleted and re-created with the same keys or EUIs cannot reuse old counters. Always register a new device (a fresh DevEUI via `make ttn-provision FORCE=1`) instead of reusing an old one. The firmware discards stored nonces automatically when the DevEUI in `firmware/secrets.h` changes, as the log message `Saved nonces belong to another device identity: discarding.` shows.
+- **Upload fails with “No serial data received”:** the firmware sleeps between uplinks, which turns USB off. Hold BOOT, tap RESET, release BOOT, and run `make upload` again.
 - **No temperature appears in decoded data:** Confirm an uplink is present, the uplink formatter is saved, and the payload has exactly two bytes on FPort 1.
 
 ## Project files
