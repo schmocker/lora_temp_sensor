@@ -116,6 +116,13 @@ void restoreNonces() {
 }
 
 void joinNetwork() {
+  if (!decodeLoRaWANKey(appKeyHex, appKey) ||
+      !decodeLoRaWANKey(nwkKeyHex, nwkKey)) {
+    haltDevice(
+      "ERROR: AppKey and NwkKey must each be exactly 32 hexadecimal characters."
+    );
+  }
+
   // Call once, before restoring the stored nonce buffer.
   node.beginOTAA(joinEUI, devEUI, nwkKey, appKey);
 

@@ -3,34 +3,45 @@
 
 #include <Arduino.h>
 #include <RadioLib.h>
+#include <string.h>
+#include "secrets.h"
 
 // Minimum interval between temperature uplinks; airtime rules can extend it.
 constexpr uint32_t uplinkIntervalSeconds = 10UL * 60UL;
 
-// OTAA credentials.
-// Keep the hexadecimal bytes in TTN's displayed order.
-uint64_t joinEUI = 0x0000000000000000;
-uint64_t devEUI  = 0x70B3D57ED0079771;
+constexpr size_t lorawanKeySize = 16;
+uint8_t appKey[lorawanKeySize];
+uint8_t nwkKey[lorawanKeySize];
 
-uint8_t appKey[] = {
-  0xD9, 0x3B, 0xF9, 0x2C,
-  0x8F, 0x7D, 0xDD, 0xA8,
-  0x2E, 0x5D, 0x65, 0x06,
-  0x36, 0xB5, 0x6B, 0x58
-};
+int8_t hexDigitValue(char digit) {
+  if (digit >= '0' && digit <= '9') {
+    return digit - '0';
+  }
+  if (digit >= 'A' && digit <= 'F') {
+    return digit - 'A' + 10;
+  }
+  if (digit >= 'a' && digit <= 'f') {
+    return digit - 'a' + 10;
+  }
+  return -1;
+}
 
-uint8_t nwkKey[] = {
-  0xD0, 0xF3, 0xFA, 0x33,
-  0x05, 0x2B, 0x81, 0x81,
-  0xCC, 0xEB, 0xF9, 0x6E,
-  0xFA, 0xCD, 0x4B, 0x75
-};
+bool decodeLoRaWANKey(const char* hex, uint8_t* key) {
+  if (strlen(hex) != lorawanKeySize * 2) {
+    return false;
+  }
 
-static_assert(sizeof(appKey) == 16,
-              "AppKey must contain exactly 16 bytes");
+  for (size_t i = 0; i < lorawanKeySize; i++) {
+    int8_t high = hexDigitValue(hex[i * 2]);
+    int8_t low = hexDigitValue(hex[i * 2 + 1]);
+    if (high < 0 || low < 0) {
+      return false;
+    }
+    key[i] = (uint8_t)((high << 4) | low);
+  }
 
-static_assert(sizeof(nwkKey) == 16,
-              "NwkKey must contain exactly 16 bytes");
+  return true;
+}
 
 // Switzerland: EU868.
 const LoRaWANBand_t Region = EU868;
